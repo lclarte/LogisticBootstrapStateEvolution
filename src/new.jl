@@ -11,6 +11,9 @@ using QuadGK
 using SpecialFunctions
 using StaticArrays
 
+# 5.0 seems good enough for now :) and is twice faster than Inf 
+const Bound = 5.0
+
 function sigmoid(x::Number)
     return inv(1 + exp(-x))
 end
@@ -85,10 +88,6 @@ function logistic_z0(y::Number, mean::Number, variance::Number)
     # from -BOUND to BOUND
     f(x) = sigmoid(y * (x * sqrt(variance) + mean)) * pdf(Normal(0, 1), x)
     return quadgk(f, -Inf, Inf)[1]
-    # f(x, p) = sigmoid(y * (x * sqrt(variance) + mean)) * pdf(Normal(0, 1), x)
-    # prob = IntegralProblem(f, -Inf, Inf)
-    # sol = solve(prob, QuadGKJL())
-    # return sol.u
 end
 
 ## 
@@ -126,8 +125,8 @@ function update_qhat(
                     b = pdf(MvNormal(SVector(0, 0), I), x)
                     return a * b
                 end
-                prob = IntegralProblem(f, SVector(-10.0, -10.0), SVector(10.0, 10.0))
-                sol = solve(prob, HCubatureJL(); reltol=1e-3, maxiters=10_000)
+                prob = IntegralProblem(f, SVector(-Bound, -Bound), SVector(Bound, Bound))
+                sol = solve(prob, HCubatureJL(); reltol=1e-3)
                 result += sol.u * weights_proba_function_bootstrap(w1, w2)
             end
         end
@@ -136,42 +135,8 @@ function update_qhat(
     return result
 end
 
-# 
-
-# function integrand_vhat(x1, x2, y, m_vec, q_sqrt_mat, q_inv_sqrt_mat, v_mat, v_inv_mat, v_star_float, weights_vec)
-#     omega = q_sqrt_mat * [x1, x2]
-#     conditional_mean = m_vec' * q_inv_sqrt_mat * [x1, x2]
-#     dg = dwgout_logistic_multivariate(y, omega, v_inv_mat, weights_vec, v_mat)
-
-#     return logistic_z0(y, conditional_mean, v_star_float) * dg[1] * dg[2]
-# end
-
-# function update_vhat(m_vec, q_mat, v_mat, rho, max_weight=2)
-#     result = 0.0
-#     q_sqrt_mat = sqrt(q_mat)
-#     q_inv_sqrt_mat = inv(q_sqrt_mat)
-#     v_inv_mat = inv(v_mat)
-
-#     for w1 in 0:max_weight-1
-#         for w2 in 0:max_weight-1
-#             for label in [-1, 1]
-#                 result += quadgk(x -> quadgk(y -> pdf(MvNormal(zeros(2), I), [x, y]) *
-#                                                   integrand_vhat(x, y, label, m_vec, q_sqrt_mat, q_inv_sqrt_mat, v_mat, v_inv_mat, rho, [w1, w2]),
-#                         -BOUND, BOUND, rtol=1e-3, maxevals=100)[1],
-#                     -BOUND, BOUND, rtol=1e-3, maxevals=100)[1]
-#             end
-#         end
-#     end
-
-#     return result
-# end
-
-#### 
-
 function state_evolution(m_vec, q_mat, v_mat, rho, max_weight=2)
     qhat_1_2 = update_qhat(m_vec, q_mat, v_mat, rho, max_weight)
-    # vhat_1_2 = update_vhat(m_vec, q_mat, v_mat, rho, max_weight)
-    # return [qhat_1_2, vhat_1_2]
     return qhat_1_2
 end
 
