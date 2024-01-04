@@ -13,6 +13,11 @@ using StaticArrays
 
 # 5.0 seems good enough for now :) and is twice faster than Inf 
 const Bound = 5.0
+const LogisticProbitFactor = 0.5875651988237005
+
+function weights_proba_function_bootstrap(w1::Number, w2::Number)
+    return pdf(Poisson(1), w1) * pdf(Poisson(1), w2)
+end
 
 function sigmoid(x::Number)
     return inv(1 + exp(-x))
@@ -63,31 +68,17 @@ function dwgout_logistic_multivariate(
     return v_inv * (derivative_prox - I)
 end
 
-function weights_proba_function_bootstrap(w1::Number, w2::Number)
-    return pdf(Poisson(1), w1) * pdf(Poisson(1), w2)
-end
-
-weights_proba_function_full_resample(w1::Number, w2::Number) = (w1 != w2) ? 0.5 : 0.0
-
-function get_weights_proba_function_cross_validation(k::Integer)
-    @assert k >= 2 "k must be >= 2"
-    function weights_proba_function(w1::Number, w2::Number)
-        if w1 != w2
-            return 1.0 / k
-        elseif w1 == w2 == 0.0
-            return 1.0 - 2.0 / k
-        else
-            return 0.0
-        end
-    end
-    return weights_proba_function
-end
-
 function logistic_z0(y::Number, mean::Number, variance::Number)
     # integrate the sigmoid multiplied by the Gaussian of mean and variance 
     # from -BOUND to BOUND
     f(x) = sigmoid(y * (x * sqrt(variance) + mean)) * pdf(Normal(0, 1), x)
     return quadgk(f, -Inf, Inf)[1]
+end
+
+function logistic_z0_approximate(y::Number, mean::Number, variance::Number)
+    # integrate the sigmoid multiplied by the Gaussian of mean and variance 
+    # from -BOUND to BOUND
+    return sigmoid(y * mean / sqrt(1.0 + variance * LogisticProbitFactor^2))
 end
 
 ## 
@@ -105,7 +96,7 @@ function integrand_qhat(
     omega = q_sqrt * x
     conditional_mean = m' * q_inv_sqrt * x
     g = gout_logistic_multivariate(y, omega, v_inv, weights)
-    return logistic_z0(y, conditional_mean, v_star_float) * g[1] * g[2]
+    return logistic_z0_approximate(y, conditional_mean, v_star_float) * g[1] * g[2]
 end
 
 function update_qhat(
@@ -140,4 +131,4 @@ function state_evolution(m_vec, q_mat, v_mat, rho, max_weight=2)
     return qhat_1_2
 end
 
-end  # module
+end
