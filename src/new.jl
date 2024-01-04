@@ -36,7 +36,7 @@ function prox_logistic_multivariate(
         return a + b
     end
 
-    res = optimize(prox_logistic_multivariate_objective, omega, LBFGS())
+    res = optimize(prox_logistic_multivariate_objective, MVector(omega), LBFGS())
     prox = res.minimizer
     return prox
 end
@@ -119,14 +119,14 @@ function update_qhat(
 
     for w1 in 0:(max_weight - 1)
         for w2 in 0:(max_weight - 1)
-            weights = MVector(w1, w2)
+            weights = SVector(w1, w2)
             for label in (-1, 1)
                 function f(x, p)
                     a = integrand_qhat(x, label, m, q_sqrt, q_inv_sqrt, v_inv, rho, weights)
                     b = pdf(MvNormal(SVector(0, 0), I), x)
                     return a * b
                 end
-                prob = IntegralProblem(f, SVector(-Inf, -Inf), SVector(Inf, Inf))
+                prob = IntegralProblem(f, SVector(-10.0, -10.0), SVector(10.0, 10.0))
                 sol = solve(prob, HCubatureJL(); reltol=1e-3, maxiters=10_000)
                 result += sol.u * weights_proba_function_bootstrap(w1, w2)
             end
