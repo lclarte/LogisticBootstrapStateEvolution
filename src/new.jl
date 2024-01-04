@@ -96,13 +96,13 @@ function integrand_qhat(
     omega = q_sqrt * x
     conditional_mean = m' * q_inv_sqrt * x
     g = gout_logistic_multivariate(y, omega, v_inv, weights)
-    return logistic_z0_approximate(y, conditional_mean, v_star_float) * g[1] * g[2]
+    return logistic_z0_approximate(y, conditional_mean, v_star_float) * g * g' 
 end
 
 function update_qhat(
     m::AbstractVector, q::AbstractMatrix, v::AbstractMatrix, rho, max_weight=2
 )
-    result = 0.0
+    result = MMatrix{2, 2}(zeros(2, 2))
     q_sqrt = sqrt(q)
     q_inv_sqrt = inv(q_sqrt)
     v_inv = inv(v)
@@ -126,9 +126,60 @@ function update_qhat(
     return result
 end
 
+## 
+
+function integrand_vhat(
+    x::AbstractVector,
+    y::Number,
+    m::AbstractVector,
+    q_sqrt::AbstractMatrix,
+    q_inv_sqrt::AbstractMatrix,
+    v::AbstractMatrix,
+    v_inv::AbstractMatrix,
+    v_star_float,
+    weights::AbstractVector,
+)
+    #= 
+    Compute the 2x2 qhat matrix and 2 x 2 vhat matrix, returns a 4 x 2 matrix so that 
+    we can integrate both at the same time
+    =#   
+    omega = q_sqrt * x
+    conditional_mean = m' * q_inv_sqrt * x
+    dg = dwgout_logistic_multivariate(y, omega, v_inv, weights, v)
+    return logistic_z0_approximate(y, conditional_mean, v_star_float) * dg
+end
+
+function update_vhat(
+    m::AbstractVector, q::AbstractMatrix, v::AbstractMatrix, rho, max_weight=2
+)
+    result = MMatrix{2, 2}(zeros(2, 2))
+    q_sqrt = sqrt(q)
+    q_inv_sqrt = inv(q_sqrt)
+    v_inv = inv(v)
+
+    for w1 in 0:(max_weight - 1)
+        for w2 in 0:(max_weight - 1)
+            weights = SVector(w1, w2)
+            for label in (-1, 1)
+                function f(x, p)
+                    a = integrand_vhat(x, label, m, q_sqrt, q_inv_sqrt, v, v_inv, rho, weights)
+                    b = pdf(MvNormal(SVector(0, 0), I), x)
+                    return a * b
+                end
+                prob = IntegralProblem(f, SVector(-Bound, -Bound), SVector(Bound, Bound))
+                sol = solve(prob, HCubatureJL(); reltol=1e-3)
+                result += sol.u * weights_proba_function_bootstrap(w1, w2)
+            end
+        end
+    end
+
+    return result
+end
+
 function state_evolution(m_vec, q_mat, v_mat, rho, max_weight=2)
-    qhat_1_2 = update_qhat(m_vec, q_mat, v_mat, rho, max_weight)
-    return qhat_1_2
+    qhat = update_qhat(m_vec, q_mat, v_mat, rho, max_weight)
+    vhat = update_vhat(m_vec, q_mat, v_mat, rho, max_weight)
+    return qhat, vhat
 end
 
 end
