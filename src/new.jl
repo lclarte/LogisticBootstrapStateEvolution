@@ -36,7 +36,7 @@ function prox_logistic_multivariate(
         return a + b
     end
 
-    res = optimize(prox_logistic_multivariate_objective, MVector(omega), LBFGS())
+    res = optimize(prox_logistic_multivariate_objective, Vector(omega), LBFGS(); autodiff=:forward)
     prox = res.minimizer
     return prox
 end
