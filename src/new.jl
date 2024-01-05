@@ -14,7 +14,6 @@ using StaticArrays
 # 5.0 seems good enough for now :) and is twice faster than Inf 
 const Bound = 7.5
 const LogisticProbitFactor = 0.5875651988237005
-const MaxIteration = 100
 
 function weights_proba_function_bootstrap(w1::Number, w2::Number)
     return pdf(Poisson(1), w1) * pdf(Poisson(1), w2)
@@ -25,7 +24,7 @@ function sigmoid(x::Number)
 end
 
 function hessian_logistic_loss(y::Number, z::AbstractVector, weights::AbstractVector)
-    return Diagonal(weights ./ (cosh.(y .* z)).^2 ./ 4)
+    return Diagonal(weights ./ (cosh.(y .* z / 2.0)).^2 ./ 4)
 end
 
 function gradient_logistic_loss(y::Number, z::AbstractVector, weights::AbstractVector)
@@ -238,7 +237,7 @@ end
 ## functions to update the overlap
 
 function update_overlaps(mhat::AbstractVector, qhat::AbstractMatrix, vhat::AbstractMatrix, lambda::Number)
-    tmp = inv(lambda * I + vhat)
+    tmp::SMatrix{2, Float64} = inv(lambda * I + vhat)
     m = tmp * mhat
     q = tmp * (mhat * mhat' + qhat) * tmp'
     v = tmp
@@ -246,26 +245,30 @@ function update_overlaps(mhat::AbstractVector, qhat::AbstractMatrix, vhat::Abstr
     return m, q, v
 end
 
-function state_evolution(sampling_ratio, regularisation, max_weight=2, relative_tolerance=1e-4)
+function state_evolution(sampling_ratio, regularisation, max_weight=2; relative_tolerance=1e-4, max_iteration=100)
     rho = 1.0
     
+    old_m = SVector(0.0, 0.0);
     m = SVector(0.0, 0.0);
     q = SMatrix{2,2}([1.0 0.01; 0.01  1.0]);
     v = SMatrix{2,2}([1.0 0.01; 0.01  1.0]);
 
-    # loop iteration from 1 to 10:
-    for i in 1:MaxIteration
+    mhat = SVector(0.0, 0.0);
+    qhat = SMatrix{2,2}([1.0 0.01; 0.01  1.0]);
+    vhat = SMatrix{2,2}([1.0 0.01; 0.01  1.0]);    
+
+    for i in 0:max_iteration
         # copy m into old_m to compute the difference at the end of the loop
         old_m = copy(m)
 
         mhat = sampling_ratio * update_mhat(m, q, v, rho, max_weight)
         qhat = sampling_ratio * update_qhat(m, q, v, rho, max_weight)
         vhat = sampling_ratio * update_vhat(m, q, v, rho, max_weight)
-
+        
         m, q, v = update_overlaps(mhat, qhat, vhat, regularisation)
 
-        # add the norm of m - old m to the list of differences
-        difference = norm(m - old_m) / norm(old_m)
+        # compute the relative difference between old and new m 
+        difference = norm(m - old_m) / norm(m)
         if difference < relative_tolerance
             return m, q, v, mhat, qhat, vhat
         end

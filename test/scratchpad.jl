@@ -9,5 +9,5 @@ alpha  = 1.0
 lambda = 1.0
 
 result = state_evolution(m_vec, q_mat, v_mat, alpha, 2)
-@time result = state_evolution(alpha, lambda, 7)
-@profview state_evolution(m_vec, q_mat, v_mat, alpha, 5)
+@time result = state_evolution(alpha, lambda, 7, max_iteration=10)
+@profview state_evolution(alpha, lambda, 3, max_iteration=5)
