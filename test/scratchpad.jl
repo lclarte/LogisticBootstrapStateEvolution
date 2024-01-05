@@ -1,7 +1,7 @@
 using LogisticBootstrapStateEvolution
 
 alpha  = 1.0
-lambda = 0.5
+lambda = 2.0
 
 result_1 = state_evolution(alpha, lambda, 2, max_iteration=10);
 @time result = state_evolution(alpha, lambda, 6, max_iteration=20);
