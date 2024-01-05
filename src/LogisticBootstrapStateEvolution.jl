@@ -1,12 +1,12 @@
 module LogisticBootstrapStateEvolution
 
-using Integrals: Integrals
+using Integrals: Integrals, HCubatureJL
 using LinearAlgebra
 using NLSolvers: NLSolvers
 using QuadGK
 using SpecialFunctions
 using StaticArrays
-using StatsFuns: normpdf, poispdf
+using StatsFuns: normpdf, poispdf, logistic
 
 export state_evolution
 
@@ -18,9 +18,7 @@ function weights_proba_function_bootstrap(w1::Number, w2::Number)
     return poispdf(1, w1) * poispdf(1, w2)
 end
 
-function sigmoid(x::Number)
-    return inv(1 + exp(-x))
-end
+sigmoid(x::Number) = logistic(x)
 
 function gradient_logistic_loss(y::Number, z::AbstractVector, weights::AbstractVector)
     return weights .* (sigmoid.(y .* z) .- 1) .* y
@@ -60,7 +58,7 @@ function prox_logistic_multivariate(
     f(x) = objective(x)
     fgh(g, H, x) = objective(x), gradient(g, x), hessian(H, x)
 
-    scalarobj = ScalarObjective(; f=objective, fgh)
+    scalarobj = NLSolvers.ScalarObjective(; f=objective, fgh)
     optprob = NLSolvers.OptimizationProblem(scalarobj; inplace=false)
     init = omega
     res = NLSolvers.solve(
