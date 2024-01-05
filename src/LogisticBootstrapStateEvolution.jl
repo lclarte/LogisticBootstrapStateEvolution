@@ -1,8 +1,8 @@
 module LogisticBootstrapStateEvolution
 
-using Integrals: Integrals
+using Integrals
 using LinearAlgebra
-using NLSolvers: NLSolvers
+using NLSolvers
 using QuadGK
 using SpecialFunctions
 using StaticArrays
@@ -75,8 +75,7 @@ end
 function gout_logistic_multivariate(
     y::Number, omega::AbstractVector, v_inv::AbstractMatrix, weights::AbstractVector
 )
-    prox = prox_logistic_multivariate(y, omega, v_inv, weights)
-    return v_inv * (prox - omega)
+    return v_inv * (prox_logistic_multivariate(y, omega, v_inv, weights) - omega)
 end
 
 function dwgout_logistic_multivariate(
@@ -86,7 +85,7 @@ function dwgout_logistic_multivariate(
     weights::AbstractVector,
     v::AbstractMatrix,
 )
-    prox = prox_logistic_multivariate(y, omega, v_inv, weights)
+    prox::MVector{2} = prox_logistic_multivariate(y, omega, v_inv, weights)
     derivative_prox = inv(I + v * hessian_logistic_loss(prox, weights))
     return v_inv * (derivative_prox - I)
 end
