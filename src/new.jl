@@ -44,7 +44,7 @@ end
 
     @timeit to "objective" function objective(z::AbstractVector)
         a = dot(weights, log1p.(exp.(-y .* z)))
-        b = dot(z - omega, v_inv * (z - omega)) / 2
+        b = dot(z - omega, v_inv * (z - omega)) / 2.0
         return a + b
     end
 
@@ -237,7 +237,7 @@ function integrand_vhat(
     omega = q_sqrt * x
     conditional_mean = m' * q_inv_sqrt * x
     dg = dwgout_logistic_multivariate(y, omega, v_inv, weights, v)
-    return logistic_z0_approximate(y, conditional_mean, v_star_float) * dg
+    return logistic_z0(y, conditional_mean, v_star_float) * dg
 end
 
 function update_vhat(
@@ -267,7 +267,6 @@ function update_vhat(
             end
         end
     end
-
     return result
 end
 
