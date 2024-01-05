@@ -246,28 +246,6 @@ function update_overlaps(mhat::AbstractVector, qhat::AbstractMatrix, vhat::Abstr
     return m, q, v
 end
 
-function update_m(mhat::AbstractVector, qhat::AbstractMatrix, vhat::AbstractMatrix, lambda::Number)
-    #=
-    We assume in this function that rho = 1.0 
-    =#
-    return inv(lambda * I + vhat) * mhat
-end
-
-function update_q(mhat::AbstractVector, qhat::AbstractMatrix, vhat::AbstractMatrix, lambda::Number)
-    #=
-    We assume in this function that rho = 1.0 
-    =#
-    tmp = inv(lambda * I + vhat)
-    return tmp * (mhat * mhat' + qhat) * tmp' 
-end
-
-function update_v(mhat::AbstractVector, qhat::AbstractMatrix, vhat::AbstractMatrix, lambda::Number)
-    #=
-    We assume in this function that rho = 1.0 
-    =#
-    return inv(lambda * I + vhat)
-end
-
 function state_evolution(sampling_ratio, regularisation, max_weight=2, relative_tolerance=1e-4)
     rho = 1.0
     
