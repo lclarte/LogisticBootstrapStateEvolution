@@ -24,15 +24,23 @@ function weights_proba_function_bootstrap(w1::Number, w2::Number)
 end
 
 function sigmoid(x::Number)
-    return inv(1 + exp(-x))
+    return 1.0 / (1.0 + exp(-x))
+end
+
+function sigmoid(x::Vector)
+    return 1.0 ./ (1.0 .+ exp.(-x))
+end
+
+function sigmoid(x::MVector)
+    return 1.0 ./ (1.0 .+ exp.(-x))
 end
 
 function gradient_logistic_loss(y::Number, z::AbstractVector, weights::AbstractVector)
-    return y .* weights .* (1 .- sigmoid.(y .* z))
+    return weights .* (sigmoid(y .* z) .- 1) .* y
 end
 
-function hessian_logistic_loss(y::Number, z::AbstractVector, weights::AbstractVector)
-    return Diagonal(weights ./ (cosh.(y .* z / 2.0)) .^ 2 ./ 4)
+function hessian_logistic_loss(z::AbstractVector, weights::AbstractVector)
+    return Diagonal(weights ./ (cosh.(z / 2.0).^2 .* 4.0) )
 end
 
 @timeit to function prox_logistic_multivariate(
@@ -49,33 +57,38 @@ end
     end
 
     @timeit to "gradient" function objective_grad!(g::AbstractVector, z::AbstractVector)
-        ForwardDiff.gradient!(g, objective, z)
-        return nothing
+        # ForwardDiff.gradient!(g, objective, z)
+        # return nothing
+        a = gradient_logistic_loss(y, z, weights)
+        b = v_inv * (z - omega)
+        g .= a .+ b
     end
 
     @timeit to "hessian" function objective_hess!(h::AbstractMatrix, z::AbstractVector)
-        ForwardDiff.hessian!(h, objective, z)
-        return nothing
+        # ForwardDiff.hessian!(h, objective, z)
+        # return nothing
+        a = hessian_logistic_loss(z, weights)
+        b = v_inv
+        h .= a .+ b
     end
 
-    init = Vector(omega)
-    algo = Newton(;
-        alphaguess=LineSearches.InitialStatic(), linesearch=LineSearches.Static()
-    )
-    algo = BFGS(;
-        alphaguess=LineSearches.InitialStatic(), linesearch=LineSearches.BackTracking()
-    )
+    init = MVector(omega)
+    # algo = NewtonTrustRegion(;initial_delta = 1.0, delta_hat = 100.0, eta = 0.1, rho_lower = 0.25, rho_upper = 0.75)
+    algo = NewtonTrustRegion()
+    # algo = BFGS(;
+    #     alphaguess=LineSearches.InitialStatic(), linesearch=LineSearches.BackTracking()
+    # )
     options = Optim.Options(;
-        store_trace=false, x_tol=0.0, f_tol=0.0, g_tol=1e-8, iterations=1000
+        store_trace=false, x_tol=1e-5, f_tol=0.0, g_tol=1e-8, iterations=1000
     )
     res = @timeit to "optimize" optimize(
         objective,  #
-        # objective_grad!,  #
-        # objective_hess!,  #
+        objective_grad!,  #
+        objective_hess!,  #
         init,  #
         algo,  #
         options,  #
-        autodiff=:forward,  #
+        # autodiff=:forward,  #
     )
     prox = res.minimizer
     return prox
@@ -96,7 +109,7 @@ function dwgout_logistic_multivariate(
     v::AbstractMatrix,
 )
     prox = prox_logistic_multivariate(y, omega, v_inv, weights)
-    derivative_prox = inv(I + v * hessian_logistic_loss(y, prox, weights))
+    derivative_prox = inv(I + v * hessian_logistic_loss(prox, weights))
     return v_inv * (derivative_prox - I)
 end
 
@@ -115,7 +128,7 @@ end
 
 function logistic_dz0(y::Number, mean::Number, variance::Number)::Number
     integrand(z) = z * sigmoid(y * (z * sqrt(variance) + mean)) * normpdf(z)
-    result = quadgk(integrand, -Bound, Bound)[1]
+    result = quadgk(integrand, -10.0, 10.0)[1]
     return result / sqrt(variance)
 end
 
@@ -166,7 +179,7 @@ function update_qhat(
     end
 
     return result
-end
+end 
 
 ## 
 
@@ -189,7 +202,7 @@ end
 function update_mhat(
     m::AbstractVector, q::AbstractMatrix, v::AbstractMatrix, rho, max_weight=2
 )
-    result = Vector{Float64}(zeros(2))
+    result = MVector{2}(zeros(2))
     q_sqrt = sqrt(q)
     q_inv = inv(q)
     q_inv_sqrt = inv(q_sqrt)
@@ -230,14 +243,10 @@ function integrand_vhat(
     v_star_float,
     weights::AbstractVector,
 )
-    #= 
-    Compute the 2x2 qhat matrix and 2 x 2 vhat matrix, returns a 4 x 2 matrix so that 
-    we can integrate both at the same time
-    =#
     omega = q_sqrt * x
     conditional_mean = m' * q_inv_sqrt * x
     dg = dwgout_logistic_multivariate(y, omega, v_inv, weights, v)
-    return logistic_z0(y, conditional_mean, v_star_float) * dg
+    return logistic_z0_approximate(y, conditional_mean, v_star_float) * dg
 end
 
 function update_vhat(
