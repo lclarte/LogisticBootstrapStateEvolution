@@ -1,0 +1,7 @@
+using LogisticBootstrapStateEvolution: SingleLogisticStateEvolution
+
+alpha = 2.0
+lambda= 0.1
+
+@time SingleLogisticStateEvolution.state_evolution(alpha, lambda, max_iteration=20, reltol=1e-5)
+@time SingleLogisticStateEvolution.state_evolution_bootstrap(alpha, lambda, max_weight=10, max_iteration=20, reltol=1e-5)

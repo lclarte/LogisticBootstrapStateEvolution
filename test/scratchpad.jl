@@ -1,4 +1,4 @@
-using LogisticBootstrapStateEvolution
+using LogisticBootstrapStateEvolution: MultipleLogisticStateEvolution
 using StaticArrays
 
 #= 
@@ -25,9 +25,9 @@ qhatdiag = SVector{2}([0.16643081204981966, 0.16643081204981966])
 vhat     = SVector{2}([0.12483045273537757, 0.12483045273537757])
 
 
-result_1 = state_evolution(m, qdiag, v, mhat, qhatdiag, vhat, alpha, lambda, 6, max_iteration=30);
+result_1 = MultipleLogisticStateEvolution.state_evolution_bootstrap_bootstrap(m, qdiag, v, mhat, qhatdiag, vhat, alpha, lambda, max_weight=6, max_iteration=30);
 result_1
-@time state_evolution(m, qdiag, v, mhat, qhatdiag, vhat, alpha, lambda, 6, max_iteration=10);
-result
-@profview state_evolution(m, qdiag, v, mhat, qhatdiag, vhat, alpha, lambda, 6, max_iteration=10)
+@time  MultipleLogisticStateEvolution.state_evolution_bootstrap_bootstrap(m, qdiag, v, mhat, qhatdiag, vhat, alpha, lambda, max_weight=6, max_iteration=30);
+@profview state_evolution_bootstrap_bootstrap(m, qdiag, v, mhat, qhatdiag, vhat, alpha, lambda, 6, max_iteration=10, reltol=1e-3);
 @profview_allocs state_evolution(alpha, lambda, 3, max_iteration=5)
+
