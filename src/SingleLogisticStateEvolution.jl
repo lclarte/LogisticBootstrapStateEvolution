@@ -80,7 +80,7 @@ end
 
 ### 
 
-function state_evolution_bootstrap(sampling_ratio::Number, regularisation::Number; max_weight=6, max_iteration=20, reltol=1e-3)
+function state_evolution_bootstrap(sampling_ratio::Number, regularisation::Number; max_weight=6, max_iteration=1000, reltol=1e-3)
     #= 
     Code for state evolution of a single learner in logistic regression with a logistic teacher with bootstrap resamples
     =#
@@ -100,15 +100,29 @@ function state_evolution_bootstrap(sampling_ratio::Number, regularisation::Numbe
         v = update_v(mhat, qhat, vhat, regularisation)
 
         if abs(q - old_q) / abs(q) < reltol
-            return m, q, v
+            return Dict(
+                "m" => m,
+                "q" => q,
+                "v" => v,
+                "mhat" => mhat,
+                "qhat" => qhat,
+                "vhat" => vhat,
+            )
         end
     end
 
     println("Warning: state evolution did not converge in $max_iteration iterations")
-    return m, q, v
+    return Dict(
+                "m" => m,
+                "q" => q,
+                "v" => v,
+                "mhat" => mhat,
+                "qhat" => qhat,
+                "vhat" => vhat,
+            )
 end
 
-function state_evolution(sampling_ratio::Number, regularisation::Number; max_iteration=20, reltol=1e-3)
+function state_evolution(sampling_ratio::Number, regularisation::Number; max_iteration=1000, reltol=1e-3)
     #= 
     Code for state evolution of a single learner in logistic regression with a logistic teacher with bootstrap resamples
     =#
@@ -128,12 +142,26 @@ function state_evolution(sampling_ratio::Number, regularisation::Number; max_ite
         v = update_v(mhat, qhat, vhat, regularisation)
         
         if abs(q - old_q) / abs(q) < reltol
-            return m, q, v
+            return Dict(
+                "m" => m,
+                "q" => q,
+                "v" => v,
+                "mhat" => mhat,
+                "qhat" => qhat,
+                "vhat" => vhat,
+            )
         end
     end
 
     println("Warning: state evolution did not converge in $max_iteration iterations")
-    return m, q, v
+    return Dict(
+                "m" => m,
+                "q" => q,
+                "v" => v,
+                "mhat" => mhat,
+                "qhat" => qhat,
+                "vhat" => vhat,
+            )
 end
 
 end  # module

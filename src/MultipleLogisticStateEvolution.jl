@@ -80,8 +80,8 @@ function update_q(
     return tmp * (mhat * mhat' .+ qhat) * tmp
 end
 
-function state_evolution_bootstrap_bootstrap(
-    m::AbstractVector, qdiag::AbstractVector, v::AbstractVector, mhat::AbstractVector, qhatdiag::AbstractVector, vhat::AbstractVector, sampling_ratio::Number, regularisation::Number; max_weight::Number=5, max_iteration=2, reltol=1e-3
+function state_evolution_bootstrap_bootstrap_from_single_overlaps(
+    m::AbstractVector, qdiag::AbstractVector, v::AbstractVector, mhat::AbstractVector, qhatdiag::AbstractVector, vhat::AbstractVector, sampling_ratio::Number, regularisation::Number; max_weight::Number=5, max_iteration=100, reltol=1e-3
 )
     #= 
     Compute the correlation between two bootstrap resamples 
@@ -113,8 +113,8 @@ function state_evolution_bootstrap_bootstrap(
     return q, qhat
 end
 
-function state_evolution_bootstrap_full(
-    m::AbstractVector, qdiag::AbstractVector, v::AbstractVector, mhat::AbstractVector, qhatdiag::AbstractVector, vhat::AbstractVector, sampling_ratio::Number, regularisation::Number, max_weight::Number=5; max_iteration=2, reltol=1e-3
+function state_evolution_bootstrap_full_from_single_overlaps(
+    m::AbstractVector, qdiag::AbstractVector, v::AbstractVector, mhat::AbstractVector, qhatdiag::AbstractVector, vhat::AbstractVector, sampling_ratio::Number, regularisation::Number, max_weight::Number=5; max_iteration=100, reltol=1e-3
 )
     #=
     Compute the correlation between bootstrap resamples and learner trained on the full dataset
