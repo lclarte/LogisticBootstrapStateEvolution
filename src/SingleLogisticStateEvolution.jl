@@ -9,7 +9,7 @@ include("LogisticChannel.jl")
 using StatsFuns: normpdf, poispdf, logistic
 using QuadGK
 
-const Bound = 10.0
+const Bound = Inf
 
 function weights_proba_function_bootstrap(w::Number)
     return poispdf(1, w)
@@ -80,26 +80,30 @@ end
 
 ### 
 
-function state_evolution_bootstrap(sampling_ratio::Number, regularisation::Number; max_weight=6, max_iteration=1000, reltol=1e-3)
+function state_evolution_bootstrap(sampling_ratio::Number, regularisation::Number; max_weight::Int=6, max_iteration::Int=1000, reltol::Number=1e-3,
+    minit::Union{Nothing, Number}=nothing, qinit::Union{Nothing, Number}=nothing, vinit::Union{Nothing, Number}=nothing)
     #= 
     Code for state evolution of a single learner in logistic regression with a logistic teacher with bootstrap resamples
     =#
-    m = 0.01
-    q = 0.99
-    v = 0.99
+    m::Number = minit === nothing ? 0.01 : minit
+    q::Number = qinit === nothing ? 0.99 : qinit
+    v::Number = vinit === nothing ? 0.99 : vinit
+
+    bootstrap_range = 0:max_weight
 
     for iteration in 0:max_iteration
         old_q = q
 
-        mhat = sampling_ratio * update_mhat(m, q, v, 0:max_weight, weights_proba_function_bootstrap)
-        qhat = sampling_ratio * update_qhat(m, q, v, 0:max_weight, weights_proba_function_bootstrap)
-        vhat = sampling_ratio * update_vhat(m, q, v, 0:max_weight, weights_proba_function_bootstrap)
+        mhat = sampling_ratio * update_mhat(m, q, v, bootstrap_range, weights_proba_function_bootstrap)
+        qhat = sampling_ratio * update_qhat(m, q, v, bootstrap_range, weights_proba_function_bootstrap)
+        vhat = sampling_ratio * update_vhat(m, q, v, bootstrap_range, weights_proba_function_bootstrap)
 
         m = update_m(mhat, qhat, vhat, regularisation)
         q = update_q(mhat, qhat, vhat, regularisation)
         v = update_v(mhat, qhat, vhat, regularisation)
 
         if abs(q - old_q) / abs(q) < reltol
+            print("Bootstrap state evolution converged in $iteration iterations")
             return Dict(
                 "m" => m,
                 "q" => q,
@@ -122,26 +126,31 @@ function state_evolution_bootstrap(sampling_ratio::Number, regularisation::Numbe
             )
 end
 
-function state_evolution(sampling_ratio::Number, regularisation::Number; max_iteration=1000, reltol=1e-3)
+function state_evolution(sampling_ratio::Number, regularisation::Number; max_iteration=1000, reltol=1e-3,
+    minit::Union{Nothing, Number}=nothing, qinit::Union{Nothing, Number}=nothing, vinit::Union{Nothing, Number}=nothing)
     #= 
     Code for state evolution of a single learner in logistic regression with a logistic teacher with bootstrap resamples
     =#
-    m = 0.01
-    q = 0.99
-    v = 0.99
+    m::Number = minit === nothing ? 0.01 : minit
+    q::Number = qinit === nothing ? 0.99 : qinit
+    v::Number = vinit === nothing ? 0.99 : vinit
+
+    erm_range = [1]
+    erm_weight_function = z -> 1.0
 
     for iteration in 0:max_iteration
         old_q = q
         
-        mhat = sampling_ratio * update_mhat(m, q, v, [1], z -> 1.0)
-        qhat = sampling_ratio * update_qhat(m, q, v, [1], z -> 1.0)
-        vhat = sampling_ratio * update_vhat(m, q, v, [1], z -> 1.0)
+        mhat = sampling_ratio * update_mhat(m, q, v, erm_range, erm_weight_function)
+        qhat = sampling_ratio * update_qhat(m, q, v, erm_range, erm_weight_function)
+        vhat = sampling_ratio * update_vhat(m, q, v, erm_range, erm_weight_function)
         
         m = update_m(mhat, qhat, vhat, regularisation)
         q = update_q(mhat, qhat, vhat, regularisation)
         v = update_v(mhat, qhat, vhat, regularisation)
         
         if abs(q - old_q) / abs(q) < reltol
+            print("ERM state evolution converged in $iteration iterations")
             return Dict(
                 "m" => m,
                 "q" => q,
