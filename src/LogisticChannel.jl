@@ -11,7 +11,8 @@ using SpecialFunctions
 using StaticArrays
 
 sigmoid(x::Number) = logistic(x)
-const Bound = 10.0
+# TODO : This should be Inf
+const Bound = 10.0 
 const LogisticProbitFactor = 0.5875651988237005
 
 function gradient_logistic_loss(y::Number, z::Number)
@@ -55,6 +56,8 @@ function prox_logistic_univariate(
     scalarobj = NLSolvers.ScalarObjective(; f=objective, fgh)
     optprob = NLSolvers.OptimizationProblem(scalarobj; inplace=false)
     init = omega
+
+    # TODO : No control on the precision of the solution
     res = NLSolvers.solve(
         optprob,
         init,
@@ -85,6 +88,7 @@ function logistic_z0(y::Number, mean::Number, variance::Number)
     return quadgk(f, -Bound, Bound)[1]
 end
 
+# TODO : That0s a fast approximation of logistic_z0
 function logistic_z0_approximate(y::Number, mean::Number, variance::Number)
     # integrate the sigmoid multiplied by the Gaussian of mean and variance 
     # from -BOUND to BOUND

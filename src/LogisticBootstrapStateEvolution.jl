@@ -6,6 +6,11 @@ include("SingleLogisticStateEvolution.jl")
 include("MultipleLogisticStateEvolution.jl")
 include("LogisticChannel.jl")
 
+#=
+The overall philosophy is to compute the s-e equations first for single estimators (i.e we don't compute their correlation)
+which corresponds to computing the diagonal of the q matrix, and then computing the off-diagonal term
+=#
+
 function state_evolution_bootstrap_bootstrap(sampling_ratio::Number, regularisation::Number;
     rho = 1.0, max_iteration=100, max_weight=6, reltol=1e-3, bootstrap_minit=nothing, bootstrap_qinit=nothing, bootstrap_vinit=nothing, verbose = false)
     single_overlaps = SingleLogisticStateEvolution.state_evolution_bootstrap(sampling_ratio, regularisation, max_weight=max_weight, reltol=reltol,
@@ -19,7 +24,7 @@ function state_evolution_bootstrap_bootstrap(sampling_ratio::Number, regularisat
 
     q, qhat = MultipleLogisticStateEvolution.state_evolution_bootstrap_bootstrap_from_single_overlaps(m, qdiag, v, mhat, qhatdiag, vhat, sampling_ratio, regularisation,
                                                     max_iteration=max_iteration, max_weight=max_weight, reltol=reltol, rho = rho, verbose=verbose)
-    # return the overlaps in a dictionnary
+
     return Dict(
         "m" => m,
         "q" => q,

@@ -39,6 +39,7 @@ function update_qhat(m::Number, q::Number, v::Number, weight_range, weight_funct
     for weight in weight_range
         for label in [-1, 1]
             result += quadgk(
+                # TODO : The rigorous function to use is logistic_z0 that computes the integral instead of approximating the sigmoid
                 z -> LogisticChannel.logistic_z0_approximate(label, m / sqrt(q) * z, v_star) * LogisticChannel.gout_logistic_univariate(label, sqrt(q) * z, v, weight)^2 * normpdf(z),
                 -Bound,
                 Bound,
@@ -55,6 +56,7 @@ function update_vhat(m::Number, q::Number, v::Number, weight_range, weight_funct
     for weight in weight_range
         for label in [-1, 1]
             result += quadgk(
+                # TODO : The rigorous function to use is logistic_z0 that computes the integral instead of approximating the sigmoid
                 z -> LogisticChannel.logistic_z0_approximate(label, m / sqrt(q) * z, v_star) * LogisticChannel.dwgout_logistic_univariate(label, sqrt(q) * z, v, weight) * normpdf(z),
                 -Bound,
                 Bound,
@@ -86,7 +88,9 @@ function state_evolution_bootstrap(sampling_ratio::Number, regularisation::Numbe
     m::Number = minit === nothing ? 0.00 : minit
     q::Number = qinit === nothing ? 1.0  : qinit
     v::Number = vinit === nothing ? 1.0  : vinit
-
+    
+    # TODO : Mathematiquement on devrait prendre max_weight = infini, mais c'est pas possible
+    # en pratique entre 8 et 10 c'est suffisant    
     bootstrap_range = 0:max_weight
 
     for iteration in 0:max_iteration
@@ -100,6 +104,9 @@ function state_evolution_bootstrap(sampling_ratio::Number, regularisation::Numbe
         q = update_q(mhat, qhat, vhat, regularisation, rho = rho)
         v = update_v(mhat, qhat, vhat, regularisation, rho = rho)
 
+        #= TODO : On ne verifie que la convergence de q mais normalement on devrait
+        verifier que TOUS les overlaps m, q et v on converge
+        =#
         if abs(q - old_q) / abs(q) < reltol
             return Dict(
                 "m" => m,

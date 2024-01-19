@@ -12,7 +12,7 @@ include("LogisticChannel.jl")
 
 export state_evolution_bootstrap_bootstrap, state_evolution_bootstrap_full
 
-# 5.0 seems good enough for now :) and is twice faster than Inf 
+# TODO : the bound shpuld be INF
 const Bound = 10.0
 const LogisticProbitFactor = 0.5875651988237005
 
@@ -54,6 +54,7 @@ function update_qhat(
                 prob = Integrals.IntegralProblem(
                     fq, SVector(-Bound, -Bound), SVector(Bound, Bound)
                 )
+                # TODO : In these integrals I don't know if 1e-3 is precise enough
                 sol = Integrals.solve(prob, HCubatureJL(); reltol=1e-3)
                 result += sol.u * weight_function(w1, w2)
             end
@@ -72,6 +73,7 @@ function integrand_qhat_y_resampling(
     conditional_mean = m' * q_inv * omega
     g1 = LogisticChannel.gout_logistic_univariate(ys[1], omega[1], v[1], 1.0)
     g2 = LogisticChannel.gout_logistic_univariate(ys[2], omega[2], v[2], 1.0)
+    # TODO : the function should be logistic_z0 (and not logistic_z0_approximate)
     return LogisticChannel.logistic_z0_approximate(ys[1], conditional_mean, v_star_float) * LogisticChannel.logistic_z0_approximate(ys[2], conditional_mean, v_star_float) * g1 * g2 
 
 end
@@ -82,7 +84,6 @@ function update_qhat_y_resampling(
     result = 0.0
     q_sqrt = sqrt(q)
     q_inv  = inv(q)
-    q_inv = inv(q)
     v_star_float = rho - m' * q_inv * m
 
     for label1 in (-1, 1)
@@ -136,8 +137,8 @@ function state_evolution_bootstrap_bootstrap_from_single_overlaps(
         qhat[1, 2] = update
         qhat[2, 1] = update
 
-        q    = update_q(mhat, qhat, vhat, regularisation, rho = rho)
-        reldiff = abs(q[1, 2] - old_q_off) / abs(q[1, 2])
+        q = update_q(mhat, qhat, vhat, regularisation, rho = rho)
+        reldiff = abs(q[1, 2] - old_q_off) / abs( q[1, 2] )
         if reldiff < reltol
             if verbose
                 println("Converged in $i iterations, last relative difference is $reldiff")
@@ -173,6 +174,7 @@ function state_evolution_bootstrap_full_from_single_overlaps(
         qhat[2, 1] = update
 
         q    = update_q(mhat, qhat, vhat, regularisation, rho = rho)
+        
         if abs(q[1, 2] - old_q_off) / abs(q[1, 2]) < reltol
             return q, qhat
         end
@@ -187,7 +189,8 @@ function state_evolution_full_full_from_single_overlaps(
     max_iteration=100, reltol=1e-3, rho = 1.0, verbose::Bool = false
 )
     q       = MMatrix{2,2}(diagm(qdiag))
-    q[1, 2] = m[1] * m[2] # we do this to avoid vstar to be negative maybe ? 
+    # TODO : I use this init to avoid vstar to be negative but I'm not sure if that completely solves the problem
+    q[1, 2] = m[1] * m[2] 
     qhat    = MMatrix{2,2}(diagm(qhatdiag))
 
     weight = 0:1
@@ -200,12 +203,16 @@ function state_evolution_full_full_from_single_overlaps(
         update = (2.0 * sampling_ratio) * update_qhat(m, q, v, rho, weight, weight, weight_function)
         qhat[1, 2] = update
         qhat[2, 1] = update
-        
+
+        # TODO : These commented lines MIGHT solve the problem of qhat matrix not being positive definite
+        # but we lose all guarantees on the s-e equations
+
         # if update^2 > abs(qhat[1] * qhat[2])
         #     update = 0.9 * sign(update) * sqrt(abs(qhat[1] * qhat[2]))
         # end
 
         q    = update_q(mhat, qhat, vhat, regularisation, rho = rho)
+        
         reldiff = abs(q[1, 2] - old_q_off) / abs(q[1, 2])
         if reldiff < reltol
             if verbose
@@ -238,9 +245,11 @@ function state_evolution_y_resampling_from_single_overlaps(
         old_q_off = q[1, 2]
 
         update = sampling_ratio * update_qhat_y_resampling(m, q, v, rho)
+        
         # if update^2 > abs(qhat[1] * qhat[2])
         #     update = 0.9 * sign(update) * sqrt(abs(qhat[1] * qhat[2]))
         # end
+        
         qhat[1, 2] = update
         qhat[2, 1] = update
         
